@@ -1,32 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, ActivityIndicator, TouchableOpacity, Picker, StyleSheet } from "react-native";
+import { View, Text, FlatList, Image, ActivityIndicator, TouchableOpacity, Alert, StyleSheet } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigation } from "@react-navigation/native";
 
-const UserListaMascotasScreen = () => {
+const AdminListaMascotasScreen = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const [mascotas, setMascotas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState("raza"); // Filtro por defecto
-  const [filterValue, setFilterValue] = useState(""); // Valor del filtro (raza o tamaño)
-
-  // Filtros simulados
-  const razaOptions = ["Bulldog", "Labrador", "Beagle", "Chihuahua"];
-  const tamañoOptions = ["Pequeño", "Mediano", "Grande"];
-
-  // Filtrar las mascotas según el filtro seleccionado
-  const filterMascotas = () => {
-    if (!filterValue) return mascotas; // No aplicar filtro si el valor está vacío
-
-    return mascotas.filter((mascota) => {
-      if (selectedFilter === "raza") {
-        return mascota.breed.toLowerCase().includes(filterValue.toLowerCase());
-      } else if (selectedFilter === "tamaño") {
-        return mascota.description.toLowerCase().includes(filterValue.toLowerCase());
-      }
-    });
-  };
 
   useEffect(() => {
     const fetchMascotas = async () => {
@@ -62,53 +43,61 @@ const UserListaMascotasScreen = () => {
     fetchMascotas();
   }, []);
 
-  const filteredMascotas = filterMascotas(); // Aplicar filtro
+  // Función para eliminar una mascota
+  const handleDelete = (id) => {
+    // Mostrar una alerta para confirmar la eliminación
+    Alert.alert(
+      "Confirmar Eliminación",
+      "¿Estás seguro de que deseas eliminar esta mascota?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Eliminar",
+          onPress: () => {
+            setMascotas(mascotas.filter((mascota) => mascota.id !== id));
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={[styles.title, { color: theme.textColor }]}>Mascotas en Adopción</Text>
-
-      {/* Filtro de raza o tamaño */}
-      <Text style={[styles.filterLabel, { color: theme.textColor }]}>Filtrar por:</Text>
-      <Picker
-        selectedValue={selectedFilter}
-        onValueChange={(itemValue) => setSelectedFilter(itemValue)}
-        style={[styles.picker, { backgroundColor: theme.background, color: theme.textColor }]}
-      >
-        <Picker.Item label="Raza" value="raza" />
-        <Picker.Item label="Tamaño" value="tamaño" />
-      </Picker>
-
-      {/* Opciones de filtro dinámicas */}
-      <Picker
-        selectedValue={filterValue}
-        onValueChange={(itemValue) => setFilterValue(itemValue)}
-        style={[styles.picker, { backgroundColor: theme.background, color: theme.textColor }]}
-      >
-        {selectedFilter === "raza"
-          ? razaOptions.map((raza, index) => (
-              <Picker.Item key={index} label={raza} value={raza} />
-            ))
-          : tamañoOptions.map((tamaño, index) => (
-              <Picker.Item key={index} label={tamaño} value={tamaño} />
-            ))}
-      </Picker>
 
       {/* Cargando o mostrando mascotas */}
       {loading ? (
         <ActivityIndicator size="large" color={theme.buttonBackground} />
       ) : (
         <FlatList
-          data={filteredMascotas}
+          data={mascotas}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("UserDetallesMascotaScreen", { mascota: item })}
-              style={[styles.mascotaContainer, { backgroundColor: theme.cardBackground }]}
-            >
+            <View style={[styles.mascotaContainer, { backgroundColor: theme.cardBackground }]}>
               <Image source={{ uri: item.image }} style={styles.mascotaImage} />
               <Text style={[styles.mascotaName, { color: theme.textColor }]}>{item.name}</Text>
-            </TouchableOpacity>
+
+              <View style={styles.buttonContainer}>
+                {/* Botón Editar */}
+                <TouchableOpacity
+                  style={[styles.editButton, { backgroundColor: theme.buttonBackground }]}
+                  onPress={() => navigation.navigate("AdminEditarMascotaScreen", { mascota: item })}
+                >
+                  <Text style={[styles.buttonText, { color: theme.buttonText }]}>Editar</Text>
+                </TouchableOpacity>
+
+                {/* Botón Eliminar */}
+                <TouchableOpacity
+                  style={[styles.deleteButton, { backgroundColor: "red" }]}
+                  onPress={() => handleDelete(item.id)}
+                >
+                  <Text style={[styles.buttonText, { color: "white" }]}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         />
       )}
@@ -127,23 +116,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 15,
   },
-  filterLabel: {
-    fontSize: 18,
-    marginBottom: 10,
-  },
-  picker: {
-    height: 50,
-    width: "100%",
-    borderRadius: 10,
-    marginBottom: 20,
-    paddingLeft: 10,
-    paddingVertical: 5,
-    color: "#fff", // Asegura que el texto sea visible
-  },
   mascotaContainer: {
     marginBottom: 20,
     alignItems: "center",
-    paddingBottom: 10,
+    padding: 10,
     borderRadius: 15,
     backgroundColor: "grey",
     shadowColor: "#fff",
@@ -151,7 +127,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 3,
-    padding: 10,
   },
   mascotaImage: {
     width: 150,
@@ -164,6 +139,33 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  buttonContainer: {
+    flexDirection: "row",
+    marginTop: 10,
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  editButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginRight: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginLeft: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
 });
 
-export default UserListaMascotasScreen;
+export default AdminListaMascotasScreen;
